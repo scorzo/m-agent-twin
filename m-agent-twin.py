@@ -224,7 +224,12 @@ def print_thread_messages(lookup_id, client):
 
     messages = client.beta.threads.messages.list(thread_id=thread.id)
 
-    for message in messages.data:
+    color_blue = "\033[94m"
+    color_yellow = "\033[93m"
+    color_reset = "\033[0m"
+    color_alternate = True  # Start with True to use blue first
+
+    for message in reversed(messages.data):
         timestamp = message.created_at
 
         # Check the type of timestamp and convert accordingly
@@ -238,7 +243,11 @@ def print_thread_messages(lookup_id, client):
             # If it's already a datetime object, format it directly
             formatted_time = timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
-        print(f"[{formatted_time}] {message.role}: {message.content[0].text.value}")
+        # Set the color based on the role of the message
+        color = color_yellow if message.role == 'user' else color_blue
+
+        # Print the message
+        print(f"{color}[{formatted_time}] {message.role}: {message.content[0].text.value}{color_reset}")
 
 
 def retrieve_or_create_assistant(assistant_id, llm_instructions, client, list_tools=[], upload_files=[]):
