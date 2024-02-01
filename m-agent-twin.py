@@ -194,6 +194,42 @@ def add_message_to_thread(thread_id, user_input, client):
 
     return message
 
+import datetime
+
+def print_thread_messages(lookup_id, client):
+    """
+    Prints a thread's messages in a human-readable format with date and time information.
+
+    Args:
+       lookup_id (int): The unique identifier for the thread.
+       client (openai.Client): An instance of the OpenAI API client.
+
+    Raises:
+       ValueError: If the lookup_id is not a valid integer.
+
+    Prints:
+       - Each message in the thread, formatted as "[timestamp] role: message content".
+       - Error messages if the thread is not found or cannot be retrieved.
+    """
+
+    thread_id = check_if_thread_exists(lookup_id)
+
+    if thread_id is None:
+        print(f"Thread with lookupId {lookup_id} not found.")
+        return
+
+    thread = retrieve_existing_thread(thread_id, lookup_id, client)
+
+    if thread is None:
+        print(f"Failed to retrieve thread with lookupId {lookup_id}.")
+        return
+
+    messages = client.beta.threads.messages.list(thread_id=thread.id)
+
+    for message in messages.data:
+        timestamp = message.created_at
+        formatted_time = datetime.datetime.fromisoformat(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+        print(f"[{formatted_time}] {message.role}: {message.content[0].text.value}")
 
 def retrieve_or_create_assistant(assistant_id, llm_instructions, client, list_tools=[], upload_files=[]):
     # Initialize an empty list for file ids
