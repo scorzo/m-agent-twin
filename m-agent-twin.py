@@ -194,8 +194,6 @@ def add_message_to_thread(thread_id, user_input, client):
 
     return message
 
-import datetime
-
 def print_thread_messages(lookup_id, client):
     """
     Prints a thread's messages in a human-readable format with date and time information.
@@ -228,8 +226,20 @@ def print_thread_messages(lookup_id, client):
 
     for message in messages.data:
         timestamp = message.created_at
-        formatted_time = datetime.datetime.fromisoformat(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+
+        # Check the type of timestamp and convert accordingly
+        if isinstance(timestamp, str):
+            # If it's a string, assume it's in ISO format and convert
+            formatted_time = datetime.fromisoformat(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+        elif isinstance(timestamp, int) or isinstance(timestamp, float):
+            # If it's an int or float, assume it's a Unix timestamp and convert
+            formatted_time = datetime.fromtimestamp(timestamp).strftime("%Y-%m-%d %H:%M:%S")
+        else:
+            # If it's already a datetime object, format it directly
+            formatted_time = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+
         print(f"[{formatted_time}] {message.role}: {message.content[0].text.value}")
+
 
 def retrieve_or_create_assistant(assistant_id, llm_instructions, client, list_tools=[], upload_files=[]):
     # Initialize an empty list for file ids
@@ -450,21 +460,33 @@ def main():
 
         if user_input == 'exit':
             exit_program()
-
-        process_user_request(
-            client=client,
-            user_input=user_input,
-            llm_instructions=instructions,  # renamed from llm_instructions to match your variable
-            assistant_id=assistant_id,
-            list_tools=list_tools,
-            upload_files=upload_files,
-            thread_lookup_id=thread_lookup_id
-        )
+        elif user_input.startswith('print thread'):
+            # Extract lookup_id from the user input
+            parts = user_input.split()
+            if len(parts) == 3 and parts[1] == 'thread':
+                try:
+                    lookup_id = int(parts[2])
+                    print_thread_messages(lookup_id, client)  # Call the print_thread function
+                    break  # Exit the program after printing the thread
+                except ValueError:
+                    print("Invalid lookup_id. Please enter a numeric lookup_id.")
+            else:
+                print("Invalid command. Use 'print thread [lookup_id]' to print a thread.")
+        else:
+            process_user_request(
+                client=client,
+                user_input=user_input,
+                llm_instructions=instructions,  # renamed from llm_instructions to match your variable
+                assistant_id=assistant_id,
+                list_tools=list_tools,
+                upload_files=upload_files,
+                thread_lookup_id=thread_lookup_id
+            )
 
 
 
 def get_user_input():
-    return input("Please enter your request (or type 'exit'): ").lower()
+    return input("Please enter your request (or type 'exit' or 'print thread'): ").lower()
 
 def exit_program():
     print("Exiting the program.")
