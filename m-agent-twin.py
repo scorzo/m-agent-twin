@@ -194,14 +194,28 @@ def add_message_to_thread(thread_id, user_input, client):
     return message
 
 
+def retrieve_or_create_assistant(assistant_id, llm_instructions, client, list_tools=[], upload_files=[]):
+    # Initialize an empty list for file ids
+    file_ids = []
 
-
-def retrieve_or_create_assistant(assistant_id, llm_instructions, client, list_tools=[], file_ids=[]):
-    # Check for 'retrieval' or 'code_interpreter' in list_tools if file_ids is not empty
-    if file_ids:
+    if upload_files:
+        # Check for 'retrieval' or 'code_interpreter' in list_tools if upload_files is not empty
         if not any(tool['type'] in ['retrieval', 'code_interpreter'] for tool in list_tools):
-            raise ValueError("file_ids are only supported if 'retrieval' or 'code_interpreter' tools are enabled.")
+            raise ValueError("Files are only supported if 'retrieval' or 'code_interpreter' tools are enabled.")
 
+        # Iterate through the upload_files list
+        for file_path in upload_files:
+            # Check if the file exists
+            if os.path.isfile(file_path):
+                # Upload the file and retrieve the file id
+                file = upload_file(file_path, client)
+                # Append the file id to the file_ids list
+                file_ids.append(file.id)
+            else:
+                # Raise an error if the file does not exist
+                raise FileNotFoundError(f"The file {file_path} does not exist.")
+
+    # only upload files if it's a new assistant
     if assistant_id:
         return client.beta.assistants.retrieve(assistant_id)
     else:
@@ -321,7 +335,7 @@ def process_user_request(
         llm_instructions=None,
         assistant_id=None,
         list_tools=[],
-        file_ids=None,
+        upload_files=[],
         thread_lookup_id=None
 ):
     """
@@ -351,7 +365,7 @@ def process_user_request(
 
         # 1. Create assistant
         try:
-            assistant = retrieve_or_create_assistant(assistant_id, llm_instructions, client, list_tools, file_ids)
+            assistant = retrieve_or_create_assistant(assistant_id, llm_instructions, client, list_tools, upload_files)
         except Exception as e:
             print(f"Error in retrieve_or_create_assistant: {e}")
 
@@ -390,8 +404,9 @@ def main():
     my_time, my_timezone = get_current_time_and_timezone(timezone_config)
     instructions=f"As Alexandra Hamilton's personal AI assistant, you have access to her detailed profile and preferences through a JSON file. Your role includes maintaining her health, organization, and social connections. Today's date is {my_time}, and the timezone is {my_timezone}. Utilize this information to effectively manage her schedule, suggest healthy routines, and foster meaningful interactions with her friends and family."
 
-    file = upload_file("./character_Alexandra_Hamilton_questions.json", client)
-    file_ids=[file.id]
+
+
+    upload_files = ["./character_Alexandra_Hamilton_questions.json"]
 
     while True:
         user_input = get_user_input()
@@ -405,7 +420,7 @@ def main():
             llm_instructions=instructions,  # renamed from llm_instructions to match your variable
             assistant_id=assistant_id,
             list_tools=list_tools,
-            file_ids=file_ids,
+            upload_files=upload_files,
             thread_lookup_id=thread_lookup_id
         )
 
